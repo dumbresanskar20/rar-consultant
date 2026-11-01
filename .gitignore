@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.pnpm-store/
+.vite-react-ssg-temp/
+.vite/
+coverage/
+.eslintcache
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log

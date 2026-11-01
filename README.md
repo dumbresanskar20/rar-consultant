@@ -1,0 +1,95 @@
+# RAR Consultant Website
+
+A dark, responsive, static React website for RAR Consultant, built with React 18, Vite, Tailwind CSS 3, Framer Motion, React Router 6, React Three Fiber, React Hook Form, Zod, and `vite-react-ssg`.
+
+> **Legal pages are templates; have a qualified Indian lawyer review them before launch.**
+
+## Important launch items
+
+- The original logo image was not included with the supplied brief. `public/logo.png` is a vector-inspired approximation of the described white RAR / red swoosh / red CONSULTANT mark; replace it with the approved original if one becomes available. The SVG source is `public/logo.svg`.
+- Replace the clearly marked company/legal placeholders in `src/config/company.js`, including registered address, working hours/location, Grievance Officer, and response timeline.
+- The home-page metrics and testimonial carousel are explicitly labelled sample content. Replace all counts and quotes with verified, approved business information before public launch.
+- The enquiry form requires a Web3Forms Access Key. No key is committed and no backend/database stores enquiries.
+- Set `VITE_SITE_URL` to the real public origin before launch. No domain was supplied, so this neutral build intentionally omits absolute canonical/social URLs and sitemap entries until the domain is known.
+
+## Requirements and local development
+
+Use Node.js 20.19+ and pnpm 11. From the project root:
+
+```bash
+pnpm install --frozen-lockfile
+cp .env.example .env.local
+# Set VITE_WEB3FORMS_ACCESS_KEY and, for a production build, VITE_SITE_URL.
+pnpm dev
+```
+
+The Vite preview application listens on port `3000`. Build the fully static site and inspect the result with:
+
+```bash
+pnpm build
+pnpm preview
+```
+
+The production site is emitted to `dist/`. Every first-party content route is statically rendered at build time. The app has no Express/Node runtime, server, API, or database. `public/manus-routes.json` lists the page routes. The build writes the final `sitemap.xml`, `robots.txt`, and GitHub Pages fallback to `dist/`.
+
+Quality commands:
+
+```bash
+pnpm lint
+pnpm format:check
+```
+
+## Web3Forms enquiry delivery
+
+The form sends a browser-side POST to `https://api.web3forms.com/submit`. It contains no SMTP credentials and does not persist form content in this site. The visitor email is sent in Web3Forms' `email` field, which the service uses as reply-to.
+
+1. Go to [web3forms.com](https://web3forms.com/), create an Access Key, enter `dumbresanskar23@gmail.com` as the recipient, and complete its email verification.
+2. Copy the Access Key into `.env.local` as `VITE_WEB3FORMS_ACCESS_KEY=...` for local testing. Do not commit `.env.local` or publish the value in source control. Because the browser must submit directly to Web3Forms, the key is included in the public website bundle; configure domain restrictions in the Web3Forms dashboard where available.
+3. Test locally before enabling domain restrictions. According to the current Web3Forms documentation, domain restriction is a Pro feature. After upgrading, open the form's settings in the Web3Forms dashboard and add the production root/subdomains as a comma-separated allowlist without `https://` or a trailing path. A restriction can block localhost, so enable it only after local testing is complete.
+4. To enable optional hCaptcha, open the form in the Web3Forms dashboard and enable hCaptcha under its spam-protection settings. The form UI must also include the provider's hCaptcha widget/response field and load the Web3Forms client script (or follow its current [React hCaptcha guide](https://docs.web3forms.com/getting-started/customizations/spam-protection/hcaptcha)); this project intentionally does not load that third-party script or require a captcha by default. Test the deployed form after enabling it.
+5. In your host's environment-variable settings, create `VITE_WEB3FORMS_ACCESS_KEY` with the same key for the Production deployment (and Preview/Staging if you intentionally test submissions there). Trigger a fresh build after changing it.
+6. To test, submit a valid form with the required consent and verify delivery to the configured mailbox. Try invalid email/phone, an unselected service, fewer than 20 description characters, and an unticked consent checkbox. Test WhatsApp and click-to-call independently. Never use real customer personal data for a test submission.
+7. The form has a 10-second request timeout, hidden `botcheck` honeypot, and client-side 60-second submit throttle. Form values are not stored locally; only the throttle timestamp and cookie-consent choice are stored in `localStorage`.
+
+### Web3Forms plan limits
+
+Web3Forms currently lists **250 submissions per month** on its Free plan, with unlimited forms and domains and hCaptcha integration. The plan-comparison page lists up to 30 days of dashboard submission history and a provider retention setting of up to three years, configurable from 7 days per form. The provider says it warns at 90% and 100% of the monthly allowance, then stops accepting submissions until the next month if the limit is exceeded. Domain restriction is listed as a Pro feature. Limits and included features can change, so confirm the [official pricing page](https://web3forms.com/pricing) and dashboard before launch. This static site does not queue failed submissions or bypass provider limits; if a request is rejected, the form provides phone and WhatsApp fallbacks.
+
+## Environment variables
+
+- `VITE_WEB3FORMS_ACCESS_KEY` — Web3Forms Access Key; required for online enquiry delivery.
+- `VITE_SITE_URL` — public canonical site origin, such as `https://rarconsultant.in`; set it for canonical/Open Graph URLs and the production sitemap. Do not use an internal Preview URL.
+- `VITE_BASE_PATH` — `/` for a root-domain deployment. For a GitHub Pages project site, set the repository subpath, such as `/rar-consultant/`.
+
+See `.env.example`. Only `VITE_` values intended for browser use belong here. Since the Web3Forms Access Key is needed by a static browser form, use the provider's available domain restrictions and captcha controls; do not treat it as a secret credential.
+
+## Static hosting
+
+All hosts should serve the contents of `dist/`, use `pnpm install --frozen-lockfile` as the install command, `pnpm build` as the build command, and `dist` as the output/publish directory. Set the environment variables in the host dashboard before each production build.
+
+### Vercel
+
+Import the repository, use the commands above, publish `dist`, and add `VITE_WEB3FORMS_ACCESS_KEY`, `VITE_SITE_URL`, and `VITE_BASE_PATH=/` in Project Settings → Environment Variables. `vercel.json` rewrites routes to `/index.html`.
+
+### Netlify
+
+Use the same build/publish settings. `public/_redirects` is copied to `dist/_redirects` with the required rule `/*  /index.html  200`. Configure the three variables in Site configuration → Environment variables and redeploy.
+
+### Cloudflare Pages
+
+Use the same build command and `dist` output directory. Add the three variables under Settings → Environment variables, then trigger a new deployment. Cloudflare Pages serves pre-rendered route output; use its SPA fallback behavior or the generated `dist/404.html` redirect fallback when deploying the built static files without an SPA rewrite.
+
+### GitHub Pages
+
+Set `VITE_BASE_PATH=/repository-name/` (including leading/trailing slash) and set `VITE_SITE_URL` to the public origin, for example `https://username.github.io`. Build and publish the `dist` directory using GitHub Pages or an Actions artifact. The build rewrites `dist/404.html` so GitHub Pages' 404 handler carries a deep link back to the app. The early path-restoration script in `index.html` returns it to React Router. For a user/organization site at the root, set `VITE_BASE_PATH=/`.
+
+## Privacy, consent, and legal templates
+
+The enquiry consent checkbox starts unticked and links to the standalone privacy and terms pages. Enquiry data is sent to Web3Forms as a third-party Data Processor and may be processed outside India; ensure this provider and transfer disclosure fits the business's actual arrangement. Before launch, set the Web3Forms per-form retention period to align with `src/config/company.js` and the Privacy Policy. Cookie settings default to essential-only; there is no analytics script enabled by default. The footer lets visitors reopen cookie settings. Update company contact details, grievance contacts, location, and other marked placeholders to match actual practices. Have the legal templates reviewed by qualified Indian counsel before public launch.
+
+## Routes and deployment notes
+
+- `/`, `/about`, `/services`, `/contact`, `/privacy-policy`, and `/terms-and-conditions` are separate React Router pages with prerendered static HTML.
+- Unknown application routes show an animated, noindex 404 page.
+- `public/manus-routes.json` is the source of declared content routes; keep it aligned with `src/App.jsx`.
+- The static build requires no database or server process. Web3Forms is the only enquiry transport.
