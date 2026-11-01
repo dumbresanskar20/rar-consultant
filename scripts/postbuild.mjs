@@ -5,7 +5,7 @@ import { loadEnv } from 'vite';
 const root = process.cwd();
 const dist = path.join(root, 'dist');
 const env = loadEnv('production', root, 'VITE_');
-const basePath = env.VITE_BASE_PATH || '/';
+const basePath = process.env.VERCEL ? '/' : (env.VITE_BASE_PATH || '/');
 const siteUrl = (env.VITE_SITE_URL || '').trim().replace(/\/$/, '');
 const routeManifest = JSON.parse(
   await fs.readFile(path.join(root, 'public/manus-routes.json'), 'utf8'),
