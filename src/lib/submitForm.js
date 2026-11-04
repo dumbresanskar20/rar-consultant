@@ -28,7 +28,7 @@ export async function submitEnquiry(values, { botcheck = '' } = {}) {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10_000);
+  const timeout = setTimeout(() => controller.abort(), 12_000);
   const payload = {
     access_key: ACCESS_KEY,
     subject: `New Enquiry from ${values.fullName} – ${values.service} | RAR Consultant Website`,
@@ -56,8 +56,10 @@ export async function submitEnquiry(values, { botcheck = '' } = {}) {
     });
     const data = await response.json().catch(() => ({}));
     if (response.ok && data.success === true) return { success: true };
+    console.error('Web3Forms response status:', response.status, data);
     return { success: false, reason: 'provider' };
   } catch (error) {
+    console.error('Submission error:', error);
     if (error?.name === 'AbortError') return { success: false, reason: 'timeout' };
     return { success: false, reason: 'network' };
   } finally {

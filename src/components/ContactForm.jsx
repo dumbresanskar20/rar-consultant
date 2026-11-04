@@ -51,7 +51,6 @@ export default function ContactForm() {
   const allowedService =
     serviceBySlug[initialService]?.title ??
     (services.some((service) => service.title === initialService) ? initialService : '');
-  const [consent, setConsent] = useState(false);
   const [botcheck, setBotcheck] = useState('');
   const [status, setStatus] = useState('idle');
   const [failureReason, setFailureReason] = useState('');
@@ -63,12 +62,19 @@ export default function ContactForm() {
     handleSubmit,
     control,
     reset,
-    formState: { errors, isValid, isSubmitting, touchedFields },
+    formState: { errors, isSubmitting, touchedFields },
   } = useForm({
     resolver: zodResolver(enquirySchema),
     mode: 'onTouched',
     reValidateMode: 'onChange',
-    defaultValues: { fullName: '', mobile: '', email: '', service: allowedService, message: '' },
+    defaultValues: {
+      fullName: '',
+      mobile: '',
+      email: '',
+      service: allowedService,
+      message: '',
+      consent: false,
+    },
   });
   const messageValue = useWatch({ control, name: 'message', defaultValue: '' });
   const messageCount = useMemo(
@@ -92,20 +98,19 @@ export default function ContactForm() {
   const onSubmit = async (values) => {
     setStatus('loading');
     setFailureReason('');
-    try {
-      window.localStorage.setItem(THROTTLE_KEY, String(Date.now()));
-    } catch {
-      // The throttle remains best-effort when browser storage is unavailable.
-    }
-    setRemaining(THROTTLE_MS);
 
     const result = await submitEnquiry(values, { botcheck });
     if (result.success) {
+      try {
+        window.localStorage.setItem(THROTTLE_KEY, String(Date.now()));
+      } catch {
+        // The throttle remains best-effort when browser storage is unavailable.
+      }
+      setRemaining(THROTTLE_MS);
       setStatus('success');
       setToast('Thank you! We will contact you within 24 hours.');
-      setConsent(false);
       setBotcheck('');
-      reset({ fullName: '', mobile: '', email: '', service: '', message: '' });
+      reset({ fullName: '', mobile: '', email: '', service: '', message: '', consent: false });
       return;
     }
     setStatus('error');
@@ -113,7 +118,7 @@ export default function ContactForm() {
     setToast('We couldn’t send your enquiry. See the message below for contact alternatives.');
   };
 
-  const submitDisabled = !consent || !isValid || isSubmitting || remaining > 0;
+  const submitDisabled = isSubmitting || status === 'loading' || remaining > 0;
   const serviceField = register('service');
   const mobileField = register('mobile');
 
@@ -330,7 +335,7 @@ export default function ContactForm() {
             </div>
             {!errors.message && (
               <p id="message-hint" className="field-hint">
-                Please share 20–500 characters so we can understand your needs.
+                Please share 5–500 characters so we can understand your needs.
               </p>
             )}
             <FieldError id="message-error" message={errors.message?.message} />
@@ -338,11 +343,13 @@ export default function ContactForm() {
         </div>
 
         <div className="consent-block">
-          <label className="consent-label">
+          <label className="consent-label" htmlFor="consent-checkbox">
             <input
+              id="consent-checkbox"
               type="checkbox"
-              checked={consent}
-              onChange={(event) => setConsent(event.target.checked)}
+              aria-invalid={Boolean(errors.consent)}
+              aria-describedby={errors.consent ? 'consent-error' : undefined}
+              {...register('consent')}
             />
             <span className="consent-box" aria-hidden="true">
               <Check size={13} />
@@ -360,6 +367,7 @@ export default function ContactForm() {
               enquiry.
             </span>
           </label>
+          <FieldError id="consent-error" message={errors.consent?.message} />
           <p className="processor-notice">
             Your enquiry details are transmitted through Web3Forms, a third-party form service
             acting as a Data Processor. It may process your data on servers outside India.

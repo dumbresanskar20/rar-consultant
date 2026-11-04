@@ -12,13 +12,16 @@ export function sanitizeDescription(value = '') {
 }
 
 export function normalizeMobileInput(value = '') {
-  return value.replace(/[^\d+]/g, '').replace(/(?!^)\+/g, '');
+  return value.replace(/[^\d+\s-]/g, '').replace(/(?!^)\+/g, '');
 }
 
 export function normalizeIndianMobile(value = '') {
-  const compact = value.trim();
-  const match = /^(?:\+91|0)?([6-9]\d{9})$/.exec(compact);
-  return match ? `+91${match[1]}` : '';
+  const digits = value.replace(/\D/g, '');
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length === 12 && digits.startsWith('91')) return `+${digits}`;
+  if (digits.length === 11 && digits.startsWith('0')) return `+91${digits.slice(1)}`;
+  const compact = value.replace(/[\s-]/g, '').trim();
+  return compact.startsWith('+') ? compact : `+${compact}`;
 }
 
 const nameSchema = z
@@ -35,10 +38,24 @@ const nameSchema = z
 
 const mobileSchema = z
   .string()
-  .trim()
-  .refine(
-    (value) => /^(?:\+91|0)?[6-9]\d{9}$/.test(value),
-    'Enter a 10-digit Indian mobile number starting with 6, 7, 8, or 9.',
+  .transform((value) => value.trim())
+  .pipe(
+    z
+      .string()
+      .min(10, 'Please enter a valid 10-digit mobile number.')
+      .max(20, 'Phone number must be under 20 characters.')
+      .refine(
+        (value) => {
+          const digits = value.replace(/\D/g, '');
+          return (
+            digits.length === 10 ||
+            (digits.length === 12 && digits.startsWith('91')) ||
+            (digits.length === 11 && digits.startsWith('0')) ||
+            digits.length >= 10
+          );
+        },
+        'Enter a valid 10-digit mobile number.',
+      ),
   );
 
 const emailSchema = z
@@ -61,7 +78,7 @@ const descriptionSchema = z
   .pipe(
     z
       .string()
-      .min(20, 'Please add at least 20 characters.')
+      .min(5, 'Please share at least 5 characters so we can understand your needs.')
       .max(500, 'Please keep your description under 500 characters.'),
   );
 
@@ -71,4 +88,9 @@ export const enquirySchema = z.object({
   email: emailSchema,
   service: serviceSchema,
   message: descriptionSchema,
+  consent: z.literal(true, {
+    errorMap: () => ({
+      message: 'Please agree to the Privacy Policy and Terms and Conditions to proceed.',
+    }),
+  }),
 });
