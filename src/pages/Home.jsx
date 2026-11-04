@@ -107,17 +107,17 @@ const sampleQuotes = [
 
 function MetricCounter({ metric, index }) {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '-40px' });
+  const inView = useInView(ref, { once: true, margin: '40px' });
   const reduceMotion = useReducedMotion();
-  const [count, setCount] = useState(0);
+  const [count, setCount] = useState(metric.value);
+  const animatedRef = useRef(false);
+
   useEffect(() => {
-    if (!inView) return undefined;
-    if (reduceMotion) {
-      setCount(metric.value);
-      return undefined;
-    }
+    if (!inView || reduceMotion || animatedRef.current) return undefined;
+    animatedRef.current = true;
+    setCount(0);
     const start = performance.now();
-    const duration = 900;
+    const duration = 1200;
     let frame;
     const update = (now) => {
       const progress = Math.min(1, (now - start) / duration);
@@ -128,11 +128,12 @@ function MetricCounter({ metric, index }) {
     frame = requestAnimationFrame(update);
     return () => cancelAnimationFrame(frame);
   }, [inView, metric.value, reduceMotion]);
+
   return (
     <motion.div
       ref={ref}
       className="metric-card"
-      initial={{ opacity: 0, y: 12 }}
+      initial={reduceMotion ? false : { opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
       transition={{ delay: index * 0.07, duration: 0.4 }}
@@ -147,6 +148,7 @@ function MetricCounter({ metric, index }) {
 }
 
 function Hero() {
+  const reduceMotion = useReducedMotion();
   const words = 'Powering Your Business With Smart IT Solutions'.split(' ');
   return (
     <section className="hero-section">
@@ -158,41 +160,40 @@ function Hero() {
             ALL IT SOLUTIONS UNDER ONE ROOF
           </p>
           <h1 aria-label="Powering Your Business With Smart IT Solutions">
-            <span className="sr-only">Powering Your Business With Smart IT Solutions</span>
-            <span className="hero-word-line" aria-hidden="true">
+            <span className="hero-word-line">
               {words.slice(0, 2).map((word, index) => (
                 <motion.span
                   className="hero-word"
                   key={word}
-                  initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }}
-                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                  transition={{ duration: 0.55, delay: 0.13 + index * 0.07 }}
+                  initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.1 + index * 0.08 }}
                 >
                   {word}
                 </motion.span>
               ))}
             </span>
-            <span className="hero-word-line" aria-hidden="true">
+            <span className="hero-word-line">
               {words.slice(2, 4).map((word, index) => (
                 <motion.span
                   className="hero-word"
                   key={word}
-                  initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }}
-                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                  transition={{ duration: 0.55, delay: 0.27 + index * 0.07 }}
+                  initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.26 + index * 0.08 }}
                 >
                   {word}
                 </motion.span>
               ))}
             </span>
-            <span className="hero-word-line hero-word-line-accent" aria-hidden="true">
+            <span className="hero-word-line hero-word-line-accent">
               {words.slice(4).map((word, index) => (
                 <motion.span
                   className="hero-word"
                   key={word}
-                  initial={{ opacity: 0, y: 24, filter: 'blur(8px)' }}
-                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                  transition={{ duration: 0.55, delay: 0.4 + index * 0.07 }}
+                  initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.42 + index * 0.08 }}
                 >
                   {word}
                 </motion.span>
@@ -201,18 +202,18 @@ function Hero() {
           </h1>
           <motion.p
             className="hero-description"
-            initial={{ opacity: 0, y: 14 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.62, duration: 0.5 }}
+            transition={{ delay: 0.55, duration: 0.5 }}
           >
             From websites and custom software to search visibility and ongoing support, get one
             practical partner for your digital growth.
           </motion.p>
           <motion.div
             className="hero-actions"
-            initial={{ opacity: 0, y: 14 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.73, duration: 0.5 }}
+            transition={{ delay: 0.65, duration: 0.5 }}
           >
             <Link to="/services" className="button button-secondary">
               Explore Services <ArrowRight size={16} aria-hidden="true" />

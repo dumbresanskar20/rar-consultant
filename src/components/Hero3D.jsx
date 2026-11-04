@@ -39,10 +39,30 @@ function NetworkGlobe({ mobile }) {
   }, [nodePositions]);
   const ambientPositions = useMemo(() => fibonacciSphere(mobile ? 90 : 220, 3.2), [mobile]);
 
+  const lineGeometry = useMemo(() => {
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+    return geom;
+  }, [linePositions]);
+
+  const nodeGeometry = useMemo(() => {
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(nodePositions, 3));
+    return geom;
+  }, [nodePositions]);
+
+  const ambientGeometry = useMemo(() => {
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute('position', new THREE.BufferAttribute(ambientPositions, 3));
+    return geom;
+  }, [ambientPositions]);
+
   useFrame((_state, delta) => {
     if (group.current) group.current.rotation.y += delta * 0.075;
     if (orbit.current) orbit.current.rotation.z += delta * 0.035;
-    pointerTarget.current.set(pointer.x * 0.36, pointer.y * 0.24, 8);
+    const px = (pointer && typeof pointer.x === 'number') ? pointer.x : 0;
+    const py = (pointer && typeof pointer.y === 'number') ? pointer.y : 0;
+    pointerTarget.current.set(px * 0.36, py * 0.24, 8);
     camera.position.lerp(pointerTarget.current, Math.min(delta * 0.75, 0.035));
     camera.lookAt(0, 0, 0);
   });
@@ -66,16 +86,10 @@ function NetworkGlobe({ mobile }) {
             wireframe
           />
         </mesh>
-        <lineSegments>
-          <bufferGeometry>
-            <bufferAttribute attach="attributes-position" args={[linePositions, 3]} />
-          </bufferGeometry>
+        <lineSegments geometry={lineGeometry}>
           <lineBasicMaterial color="#4867ff" transparent opacity={0.34} />
         </lineSegments>
-        <points frustumCulled={false}>
-          <bufferGeometry>
-            <bufferAttribute attach="attributes-position" args={[nodePositions, 3]} />
-          </bufferGeometry>
+        <points geometry={nodeGeometry} frustumCulled={false}>
           <pointsMaterial color="#a3b1ff" size={0.045} sizeAttenuation transparent opacity={0.9} />
         </points>
         <Float speed={1.2} rotationIntensity={0.12} floatIntensity={0.12}>
@@ -89,10 +103,7 @@ function NetworkGlobe({ mobile }) {
           <meshBasicMaterial color="#5470ff" transparent opacity={0.5} />
         </mesh>
       </group>
-      <points frustumCulled={false}>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[ambientPositions, 3]} />
-        </bufferGeometry>
+      <points geometry={ambientGeometry} frustumCulled={false}>
         <pointsMaterial color="#a4b2ff" size={0.018} sizeAttenuation transparent opacity={0.55} />
       </points>
     </>
@@ -104,8 +115,9 @@ class CanvasBoundary extends Component {
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  componentDidCatch() {
-    /* Keep the gradient fallback visible if WebGL fails. */
+  componentDidCatch(err) {
+    console.warn('Hero3D canvas issue caught:', err);
+    this.props.onFail?.();
   }
   render() {
     return this.state.failed ? null : this.props.children;
@@ -121,21 +133,20 @@ export default function Hero3D() {
   useEffect(() => {
     const smallScreen = window.matchMedia('(max-width: 640px)').matches;
     setMobile(smallScreen);
-    if (reduceMotion) return undefined;
     try {
       const canvas = document.createElement('canvas');
       const supported = Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl'));
       setWebgl(supported);
-      setReady(supported);
+      setReady(supported && !reduceMotion);
     } catch {
       setWebgl(false);
+      setReady(false);
     }
-    return undefined;
   }, [reduceMotion]);
 
   return (
     <div
-      className={`hero-visual${ready && webgl && !reduceMotion ? ' hero-visual-live' : ''}`}
+      className={`hero-visual${ready && webgl ? ' hero-visual-live' : ''}`}
       aria-hidden="true"
     >
       <div className="hero-visual-fallback">
@@ -143,13 +154,13 @@ export default function Hero3D() {
         <span className="fallback-orbit fallback-orbit-two" />
         <span className="fallback-core" />
       </div>
-      {ready && webgl && !reduceMotion && (
-        <CanvasBoundary>
+      {ready && webgl && (
+        <CanvasBoundary onFail={() => setReady(false)}>
           <Suspense fallback={null}>
             <Canvas
-              dpr={[1, 2]}
+              dpr={[1, 1.5]}
               camera={{ position: [0, 0, 8], fov: 36 }}
-              gl={{ alpha: true, antialias: true, powerPreference: 'low-power' }}
+              gl={{ alpha: true, antialias: true, powerPreference: 'default' }}
             >
               <NetworkGlobe mobile={mobile} />
             </Canvas>

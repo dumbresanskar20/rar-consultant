@@ -1,5 +1,7 @@
 const WEB3FORMS_ENDPOINT = 'https://api.web3forms.com/submit';
-const ACCESS_KEY = import.meta.env.VITE_WEB3FORMS_ACCESS_KEY?.trim() ?? '';
+const ACCESS_KEY = (
+  import.meta.env.VITE_WEB3FORMS_ACCESS_KEY || '8b67ad90-469d-40af-b193-a644112dc3db'
+).trim();
 
 export function getConsentTimestampIST(date = new Date()) {
   const formatted = new Intl.DateTimeFormat('en-IN', {
