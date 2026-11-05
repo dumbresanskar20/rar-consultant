@@ -28,26 +28,28 @@ export async function submitEnquiry(values) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 15_000);
 
-  const formData = new FormData();
-  formData.append('access_key', ACCESS_KEY);
-  formData.append('subject', `New Enquiry from ${values.fullName} – ${values.service} | RAR Consultant Website`);
-  formData.append('from_name', 'RAR Consultant Website');
-  formData.append('name', values.fullName);
-  formData.append('email', values.email);
-  formData.append('mobile', values.mobile);
-  formData.append('service', values.service);
-  formData.append('message', values.message);
-  formData.append('consent', 'Yes');
-  formData.append('consent_timestamp_ist', getConsentTimestampIST());
-  formData.append('consent_version', 'v1.0');
+  const payload = {
+    access_key: ACCESS_KEY,
+    subject: `New Enquiry from ${values.fullName} – ${values.service} | RAR Consultant Website`,
+    from_name: 'RAR Consultant Website',
+    name: values.fullName,
+    email: values.email,
+    mobile: values.mobile,
+    service: values.service,
+    message: values.message,
+    consent: 'Yes',
+    consent_timestamp_ist: getConsentTimestampIST(),
+    consent_version: 'v1.0',
+  };
 
   try {
     const response = await fetch(WEB3FORMS_ENDPOINT, {
       method: 'POST',
       headers: {
+        'Content-Type': 'application/json',
         Accept: 'application/json',
       },
-      body: formData,
+      body: JSON.stringify(payload),
       signal: controller.signal,
     });
     const data = await response.json().catch(() => ({}));
