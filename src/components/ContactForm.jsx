@@ -123,13 +123,13 @@ export default function ContactForm() {
 
   const valid = (field) => Boolean(touchedFields[field] && !errors[field]);
   const errorMessage =
-    failureReason === 'missing-key'
-      ? 'Our online enquiry form is being configured. Please contact us using WhatsApp or phone below.'
+    failureReason === 'missing-smtp-password'
+      ? 'Our enquiry mailer is currently being configured with SMTP credentials. Please contact us directly via WhatsApp or phone below.'
       : failureReason === 'timeout'
         ? 'The request took longer than expected, so we could not confirm delivery.'
         : failureReason === 'network'
-          ? 'We could not connect to the enquiry service. Please try again later.'
-          : 'We could not send your enquiry right now. Please try again or use the contact options below.';
+          ? 'We could not connect to the enquiry service. Please check your connection and try again.'
+          : 'We could not send your enquiry right now. Please try again or use the direct contact options below.';
 
   return (
     <section className="contact-form-card glass-card" aria-labelledby="form-title">
@@ -363,8 +363,8 @@ export default function ContactForm() {
             </span>
           </label>
           <p className="processor-notice">
-            Your enquiry details are transmitted through Web3Forms, a third-party form service
-            acting as a Data Processor. It may process your data on servers outside India.
+            Your enquiry details are securely transmitted directly to our team via encrypted email
+            and handled in accordance with our Privacy Policy.
           </p>
         </div>
 
