@@ -1,12 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, LoaderCircle, MessageCircle, Send } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { services, serviceBySlug } from '../config/services.js';
 import { company } from '../config/company.js';
-import { enquirySchema, normalizeMobileInput, sanitizeDescription } from '../lib/validation.js';
+import { enquirySchema, normalizeMobileInput } from '../lib/validation.js';
 import { submitEnquiry } from '../lib/submitForm.js';
 
 const THROTTLE_KEY = 'rar-enquiry-last-submit-v1';
@@ -51,7 +51,8 @@ export default function ContactForm() {
   const allowedService =
     serviceBySlug[initialService]?.title ??
     (services.some((service) => service.title === initialService) ? initialService : '');
-  const [botcheck, setBotcheck] = useState('');
+  const [consent, setConsent] = useState(false);
+  const [messageCount, setMessageCount] = useState(0);
   const [status, setStatus] = useState('idle');
   const [failureReason, setFailureReason] = useState('');
   const [toast, setToast] = useState('');
@@ -60,7 +61,7 @@ export default function ContactForm() {
   const {
     register,
     handleSubmit,
-    control,
+    setValue,
     reset,
     formState: { errors, isSubmitting, touchedFields },
   } = useForm({
@@ -76,11 +77,6 @@ export default function ContactForm() {
       consent: false,
     },
   });
-  const messageValue = useWatch({ control, name: 'message', defaultValue: '' });
-  const messageCount = useMemo(
-    () => sanitizeDescription(messageValue ?? '').length,
-    [messageValue],
-  );
 
   useEffect(() => {
     const update = () => setRemaining(getRemainingThrottle());
@@ -99,7 +95,7 @@ export default function ContactForm() {
     setStatus('loading');
     setFailureReason('');
 
-    const result = await submitEnquiry(values, { botcheck });
+    const result = await submitEnquiry(values);
     if (result.success) {
       try {
         window.localStorage.setItem(THROTTLE_KEY, String(Date.now()));
@@ -109,7 +105,8 @@ export default function ContactForm() {
       setRemaining(THROTTLE_MS);
       setStatus('success');
       setToast('Thank you! We will contact you within 24 hours.');
-      setBotcheck('');
+      setConsent(false);
+      setMessageCount(0);
       reset({ fullName: '', mobile: '', email: '', service: '', message: '', consent: false });
       return;
     }
@@ -118,9 +115,11 @@ export default function ContactForm() {
     setToast('We couldn’t send your enquiry. See the message below for contact alternatives.');
   };
 
-  const submitDisabled = isSubmitting || status === 'loading' || remaining > 0;
+  // Button is strictly disabled until the privacy policy & terms checkbox is checked
+  const submitDisabled = !consent || isSubmitting || status === 'loading' || remaining > 0;
   const serviceField = register('service');
   const mobileField = register('mobile');
+  const messageField = register('message');
 
   const valid = (field) => Boolean(touchedFields[field] && !errors[field]);
   const errorMessage =
@@ -198,17 +197,6 @@ export default function ContactForm() {
       </AnimatePresence>
 
       <form className="contact-form" onSubmit={handleSubmit(onSubmit)} noValidate>
-        <div className="honeypot-field" aria-hidden="true">
-          <label htmlFor="company-website">Leave this field empty</label>
-          <input
-            id="company-website"
-            name="botcheck"
-            tabIndex={-1}
-            autoComplete="off"
-            value={botcheck}
-            onChange={(event) => setBotcheck(event.target.value)}
-          />
-        </div>
         <div className="form-grid">
           <div className="form-field">
             <label htmlFor="fullName">
@@ -324,7 +312,11 @@ export default function ContactForm() {
                 aria-describedby={
                   errors.message ? 'message-error message-count' : 'message-hint message-count'
                 }
-                {...register('message')}
+                {...messageField}
+                onChange={(event) => {
+                  messageField.onChange(event);
+                  setMessageCount(event.target.value.length);
+                }}
               />
               <span
                 id="message-count"
@@ -347,9 +339,12 @@ export default function ContactForm() {
             <input
               id="consent-checkbox"
               type="checkbox"
-              aria-invalid={Boolean(errors.consent)}
-              aria-describedby={errors.consent ? 'consent-error' : undefined}
-              {...register('consent')}
+              checked={consent}
+              onChange={(event) => {
+                const checked = event.target.checked;
+                setConsent(checked);
+                setValue('consent', checked, { shouldValidate: true });
+              }}
             />
             <span className="consent-box" aria-hidden="true">
               <Check size={13} />
@@ -367,7 +362,6 @@ export default function ContactForm() {
               enquiry.
             </span>
           </label>
-          <FieldError id="consent-error" message={errors.consent?.message} />
           <p className="processor-notice">
             Your enquiry details are transmitted through Web3Forms, a third-party form service
             acting as a Data Processor. It may process your data on servers outside India.

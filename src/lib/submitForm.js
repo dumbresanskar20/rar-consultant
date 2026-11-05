@@ -17,9 +17,7 @@ export function getConsentTimestampIST(date = new Date()) {
   return `${formatted} IST`;
 }
 
-export async function submitEnquiry(values, { botcheck = '' } = {}) {
-  if (botcheck) return { success: true, silent: true };
-
+export async function submitEnquiry(values) {
   if (!ACCESS_KEY) {
     console.warn(
       'RAR Consultant contact form is not configured: set VITE_WEB3FORMS_ACCESS_KEY before launch.',
@@ -28,36 +26,36 @@ export async function submitEnquiry(values, { botcheck = '' } = {}) {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12_000);
-  const payload = {
-    access_key: ACCESS_KEY,
-    subject: `New Enquiry from ${values.fullName} – ${values.service} | RAR Consultant Website`,
-    from_name: 'RAR Consultant Website',
-    name: values.fullName,
-    mobile: values.mobile,
-    email: values.email,
-    service: values.service,
-    message: values.message,
-    consent: 'Yes',
-    consent_timestamp_ist: getConsentTimestampIST(),
-    consent_version: 'v1.0',
-    botcheck: '',
-  };
+  const timeout = setTimeout(() => controller.abort(), 15_000);
+
+  const formData = new FormData();
+  formData.append('access_key', ACCESS_KEY);
+  formData.append('subject', `New Enquiry from ${values.fullName} – ${values.service} | RAR Consultant Website`);
+  formData.append('from_name', 'RAR Consultant Website');
+  formData.append('name', values.fullName);
+  formData.append('email', values.email);
+  formData.append('mobile', values.mobile);
+  formData.append('service', values.service);
+  formData.append('message', values.message);
+  formData.append('consent', 'Yes');
+  formData.append('consent_timestamp_ist', getConsentTimestampIST());
+  formData.append('consent_version', 'v1.0');
 
   try {
     const response = await fetch(WEB3FORMS_ENDPOINT, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
         Accept: 'application/json',
       },
-      body: JSON.stringify(payload),
+      body: formData,
       signal: controller.signal,
     });
     const data = await response.json().catch(() => ({}));
-    if (response.ok && data.success === true) return { success: true };
+    if (response.ok && data.success === true) {
+      return { success: true };
+    }
     console.error('Web3Forms response status:', response.status, data);
-    return { success: false, reason: 'provider' };
+    return { success: false, reason: data.message || 'provider' };
   } catch (error) {
     console.error('Submission error:', error);
     if (error?.name === 'AbortError') return { success: false, reason: 'timeout' };

@@ -88,9 +88,5 @@ export const enquirySchema = z.object({
   email: emailSchema,
   service: serviceSchema,
   message: descriptionSchema,
-  consent: z.literal(true, {
-    errorMap: () => ({
-      message: 'Please agree to the Privacy Policy and Terms and Conditions to proceed.',
-    }),
-  }),
+  consent: z.boolean().optional(),
 });
